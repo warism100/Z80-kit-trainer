@@ -1,0 +1,407 @@
+
+            .ORG    0000h 
+
+            LD      SP,0FFF0H 
+            LD      hl,8000h 
+            CALL    RESET_TONES 
+START:      CALL    message 
+            IN      a,(01h) 
+
+            BIT     4,a 
+            CALL    nz,CLEARRAM 
+
+            BIT     5,a 
+            JP      nz,loadadress 
+
+            BIT     6,a 
+            JP      nz,loaddata 
+
+            JP      start 
+
+
+
+
+
+LOADDATA:   CALL    KEY_TONE 
+            CALL    WAIT 
+            LD      hl,8000h 
+
+DATA:       CALL    display 
+            IN      a,(01h) 
+            BIT     5,a 
+
+            JP      nz,LOADADRESS 
+            BIT     6,a 
+
+            JP      nz,incr 
+            BIT     4,a 
+
+            JP      nz,run 
+            BIT     7,A 
+
+            JP      z,data 
+
+            AND     0FH 
+            RLD      
+            CALL    KEY_TONE ;tone buttons
+
+            CALL    WAIT 
+            JP      DATA 
+
+
+
+
+LOADADRESS: CALL    KEY_TONE 
+            CALL    WAIT 
+            JP      clearbuffer 
+
+CLEARBUFFER: LD     hl,0000h 
+            XOR     a 
+            LD      bc,0FF00H 
+            LD      (bc),a 
+            INC     bc 
+            LD      (bc),a 
+
+ADRESS:     CALL    display 
+
+            IN      a,(01h) 
+            BIT     6,a 
+
+            JP      nz,WAITBACKDA 
+            BIT     4,a 
+
+            JP      nz,run 
+
+            BIT     7,A 
+
+            JP      z,adress 
+
+            LD      hl,buff 
+            RLD      
+            INC     HL 
+            RLD      
+            LD      HL,(buff) 
+            CALL    KEY_TONE ;tone buttons
+            CALL    WAIT 
+            JP      ADRESS 
+
+
+
+WAITBACKDA: CALL    KEY_TONE 
+            CALL    WAIT 
+            JP      data 
+
+WAIT:       IN      a,(01h) 
+            cp 00h 
+            JR      nz,wait 
+            RET      
+
+DISPLAY:    PUSH    hl 
+            LD      a,h 
+            PUSH    af 
+            RLCA     
+            RLCA     
+            RLCA     
+            RLCA     
+            CALL    conv 
+; call    delay
+            OUT     (03h),a 
+            LD      a,20h 
+            OUT     (04h),a 
+            CALL    delay 
+            LD a ,00h
+            OUT     (04h),a 
+
+            POP     af 
+            LD      a,h 
+            CALL    conv 
+            OUT     (03h),a 
+            LD      a,10h 
+            OUT     (04h),a 
+            CALL    delay 
+            LD a ,00h 
+            OUT     (04h),a 
+
+
+
+            LD      a,l 
+            PUSH    af 
+            RLCA     
+            RLCA     
+            RLCA     
+            RLCA     
+            CALL    conv 
+;call    delay
+            OUT     (03h),a 
+            LD      a,08h 
+            OUT     (04h),a 
+            CALL    delay 
+            LD a ,00h 
+            OUT     (04h),a 
+
+            POP     af 
+            LD      a,l 
+            CALL    conv 
+            OUT     (03h),a 
+            LD      a,04h 
+            OUT     (04h),a 
+            CALL    delay 
+           LD a ,00h
+            OUT     (04h),a 
+
+
+
+            POP     hl 
+            LD      a,(hl) 
+            LD      c,a 
+            LD      a,c 
+            PUSH    af 
+            RLCA     
+            RLCA     
+            RLCA     
+            RLCA     
+            CALL    conv 
+;call    delay
+            OUT     (03h),a 
+            LD      a,02h 
+            OUT     (04h),a 
+            CALL    delay 
+            LD a ,00h 
+            OUT     (04h),a 
+
+            POP     af 
+            CALL    conv 
+            OUT     (03h),a 
+            LD      a,01h 
+            OUT     (04h),a 
+            CALL    delay 
+            LD a ,00h
+            OUT     (04h),a 
+            RET      
+
+
+
+INCR:       CALL    KEY_TONE 
+            INC     hl 
+            CALL    WAIT 
+            JP      DATA 
+
+
+RUN:        JP      (hl) 
+
+
+
+
+
+
+
+CONV:       AND     0fh 
+            LD      de,table 
+            ADD     a,e 
+            LD      e,a 
+            LD      a,(de) 
+            RET      
+
+
+DELAY:      LD      b,80h 
+LOOP:       DEC     B 
+            DJNZ    loop 
+            RET      
+
+
+TABLE:      DB      03fh,006h,05bh,057h,066h,075h,07dh,007h,07fh,077h,06fh,07ch,039h,05eh,079h,069h 
+
+BUFF:        EQU     0FF00H 
+
+
+MESSAGETABLE: DB    039h,06Bh,03eh,040h,03eh,06Bh 
+
+
+MESSAGE:             
+            LD      B,20H 
+            LD      HL,messagetable 
+
+SCAN_LOOP:           
+            LD      A,(HL) 
+            OUT     (03),A 
+            LD      A,B 
+            OUT     (04),A 
+            LD      B,80H 
+D_LOOP:     DJNZ    d_loop 
+            INC     HL 
+            LD      B,A 
+            XOR     A 
+            OUT     (04),A 
+            RRC     B 
+            JR      NC,scan_loop 
+            OUT     (03),A 
+            RET      
+
+
+CLEARRAM:   CALL    KEY_TONE 
+            CALL    WAIT 
+            LD      hl,8000h 
+            LD      DE,8001h 
+            LD      bc,7fffh 
+            LD      (hl),00h 
+            LDIR     
+            RET      
+
+RESET_TONES:         
+            CALL    KEY_TONE 
+
+KEY_TONE:            
+            LD      C,40H ;Half cycle count
+            XOR     A ;Clear A
+
+TONE_LOOP:           
+            OUT     (04),A ;Set or unset speaker bit
+            LD      B,40H ;Set delay
+TONE_DELAY: DJNZ    TONE_DELAY 
+            XOR     80H ;Toggle speaker bit
+            DEC     C ;Count down cycle
+            JR      NZ,TONE_LOOP ;Do more toning
+            RET      
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
